@@ -1,0 +1,276 @@
+### Annotated editing transcript
+### first, edit an object module
+
+### verify command-line arguments
+### first, no file given
+$ lmedit
+usage: lmedit file
+
+### next, nonexistent file
+$ lmedit testfile.obj
+testfile.obj: No such file or directory
+
+### copy a read-only file
+$ cp sample.obj testfile.obj
+$ lmedit testfile.obj
+testfile.obj: Permission denied
+$ ls -l testfile.obj
+-r-------- 1 csci243 course 323 Nov 25 18:43 testfile.obj
+
+### make it write-only
+$ chmod 200 testfile.obj
+$ ls -l testfile.obj
+--w------- 1 csci243 course 323 Nov 25 18:43 testfile.obj
+$ lmedit testfile.obj
+testfile.obj: Permission denied
+
+### now, make it readable and writable
+$ chmod 600 testfile.obj
+$ ls -l testfile.obj
+-rw------- 1 csci243 course 323 Nov 25 18:43 testfile.obj
+$ lmedit testfile.obj
+File testfile.obj is an R2K object module
+Module version:  2007/09/02
+Section text is 96 bytes long
+Section rdata is 28 bytes long
+Section data is 4 bytes long
+Section reltab is 2 entries long
+Section reftab is 2 entries long
+Section symtab is 6 entries long
+Section strings is 31 bytes long
+
+### success!  start by printing out the first 10 "things"
+### from the text section as words, halfwords, and bytes
+text[1] >0,10
+   0x00000000 = 0x23bdfffc
+   0x00000004 = 0xafbf0000
+   0x00000008 = 0x34020000
+   0x0000000c = 0x00804021
+   0x00000010 = 0x00a04821
+   0x00000014 = 0x292a0001
+   0x00000018 = 0x15400004
+   0x0000001c = 0x8c8a0000
+   0x00000020 = 0x20840004
+   0x00000024 = 0x2129ffff
+text[2] >0,10:h
+   0x00000000 = 0x23bd
+   0x00000002 = 0xfffc
+   0x00000004 = 0xafbf
+   0x00000006 = 0x0000
+   0x00000008 = 0x3402
+   0x0000000a = 0x0000
+   0x0000000c = 0x0080
+   0x0000000e = 0x4021
+   0x00000010 = 0x00a0
+   0x00000012 = 0x4821
+text[3] >0,10:b
+   0x00000000 = 0x23
+   0x00000001 = 0xbd
+   0x00000002 = 0xff
+   0x00000003 = 0xfc
+   0x00000004 = 0xaf
+   0x00000005 = 0xbf
+   0x00000006 = 0x00
+   0x00000007 = 0x00
+   0x00000008 = 0x34
+   0x00000009 = 0x02
+
+### try some erroneous commands
+text[4] >100
+error:  '100' is not a valid address
+text[5] >size
+Section text is 96 bytes long
+text[6] >95,2
+error:  '2' is not a valid count
+
+### print the last byte and last word
+text[7] >95:b
+   0x0000005f = 0x08
+text[8] >92
+   0x0000005c = 0x03e00008
+
+### verify that we're detecting bad section names
+text[9] >section edata
+error:  'edata' is not a valid section name
+text[10] >section bss
+error:  cannot edit bss section
+text[11] >section sbss
+error:  cannot edit sbss section
+
+### do some data section editing
+text[12] >section rdata
+Now editing section rdata
+rdata[13] >0,32:b
+error:  '32' is not a valid count
+rdata[14] >size
+Section rdata is 28 bytes long
+rdata[15] >0,28:b
+   0x00000000 = 0x00
+   0x00000001 = 0x00
+   0x00000002 = 0x00
+   0x00000003 = 0x0a
+   0x00000004 = 0x00
+   0x00000005 = 0x00
+   0x00000006 = 0x00
+   0x00000007 = 0x14
+   0x00000008 = 0x00
+   0x00000009 = 0x00
+   0x0000000a = 0x00
+   0x0000000b = 0x0c
+   0x0000000c = 0x00
+   0x0000000d = 0x00
+   0x0000000e = 0x00
+   0x0000000f = 0xeb
+   0x00000010 = 0x00
+   0x00000011 = 0x00
+   0x00000012 = 0x2f
+   0x00000013 = 0x4f
+   0x00000014 = 0x00
+   0x00000015 = 0x01
+   0x00000016 = 0x68
+   0x00000017 = 0xb6
+   0x00000018 = 0xff
+   0x00000019 = 0xff
+   0x0000001a = 0xff
+   0x0000001b = 0xef
+
+### let's change some data!  make the first word contain 42
+### note that only the fourth byte actually changes
+rdata[16] >0=42
+   0x00000000 is now 0x0000002a
+rdata[17] >0,1:w
+   0x00000000 = 0x0000002a
+
+### make sure we catch attempts to quit without writing
+text[18] >quit
+Discard modifications (yes or no)?no
+
+### print out the various table sections
+text[19] >section reltab
+Now editing section reltab
+
+### table sections are read-only, and size specifiers are invalid
+reltab[20] >0,2:w
+error:  ':w' is not valid in table sections
+reltab[21] >0,2=3
+error:  '=3' is not valid in table sections
+
+### only two entries in this section
+reltab[22] >0,3
+error:  '3' is not a valid count
+reltab[23] >20
+error:  '20' is not a valid address
+reltab[24] >0,2
+   0x00000028 (text) type 0x0004
+   0x00000050 (text) type 0x0004
+
+### move to the reference table
+reltab[25] >section reftab
+Now editing section reftab
+reftab[26] >size
+Section reftab is 2 entries long
+reftab[27] >0,2
+   0x00000040 type 0x0003 symbol array
+   0x00000048 type 0x0003 symbol count
+
+### now, the symbol table
+reftab[28] >section symtab
+Now editing section symtab
+symtab[29] >size
+Section symtab is 6 entries long
+
+### print only symtab[3], then print all entries
+symtab[30] >3
+   value 0x00000014 flags 0x000000a1 symbol loop
+symtab[31] >0,6
+   value 0x0000002c flags 0x000000b1 symbol done
+   value 0x00000000 flags 0x000000a3 symbol count
+   value 0x00000038 flags 0x000040b1 symbol main
+   value 0x00000014 flags 0x000000a1 symbol loop
+   value 0x00000000 flags 0x000040b1 symbol sum
+   value 0x00000000 flags 0x000000a2 symbol array
+
+### let's change the file contents, and exit
+text[32] >write
+text[33] >quit
+
+### now, let's verify that the file was actually changed
+$ od -tx1 sample.obj > out1
+$ od -tx1 testfile.obj > out2
+$ diff out1 out2
+10c10
+< 0000220 03 e0 00 08 00 00 00 0a 00 00 00 14 00 00 00 0c
+---
+> 0000220 03 e0 00 08 00 00 00 2a 00 00 00 14 00 00 00 0c
+### only one byte changed:     ^^
+
+### now, let's edit a load module
+
+### copy the load module and make it editable
+$ cp sample.out testfile.out
+$ chmod 600 testfile.out
+$ lmedit testfile.out
+File testfile.out is an R2K load module (entry point 0x00400064)
+Module version:  2007/09/02
+Section text is 132 bytes long
+Section rdata is 32 bytes long
+Section data is 8 bytes long
+Section symtab is 8 entries long
+Section strings is 56 bytes long
+
+### print the first word from the text section
+text[1] >0
+error:  '0' is not a valid address
+
+### oops - load modules have a different text address!
+text[1] >0x00400000
+   0x00400000 = 0x23bdfffc
+text[3] >0x00400000,10
+   0x00400000 = 0x23bdfffc
+   0x00400004 = 0xafbf0000
+   0x00400008 = 0x34020000
+   0x0040000c = 0x00804021
+   0x00400010 = 0x00a04821
+   0x00400014 = 0x292a0001
+   0x00400018 = 0x15400004
+   0x0040001c = 0x8c8a0000
+   0x00400020 = 0x20840004
+   0x00400024 = 0x2129ffff
+
+### poke around the data sections a bit
+text[4] >section rdata
+Now editing section rdata
+
+### data sections begin at 0x10000000 and occupy consecutive memory
+rdata[5] >0x10000000,32
+error:  '32' is not a valid count
+
+### the section is 32 *bytes* long, which is 8 words
+rdata[6] >0x10000000,8
+   0x10000000 = 0x0000000a
+   0x10000004 = 0x00000014
+   0x10000008 = 0x0000000c
+   0x1000000c = 0x000000eb
+   0x10000010 = 0x00002f4f
+   0x10000014 = 0x000168b6
+   0x10000018 = 0xffffffef
+   0x1000001c = 0x00000000
+
+### now, the data section
+rdata[7] >section data
+Now editing section data
+
+### the last word in rdata was at 0x1000001c-0x1000001f
+### thus, data begins at 0x10000020
+data[8] >0x10000020
+   0x10000020 = 0x00000007
+data[9] >0x10000020,2
+   0x10000020 = 0x00000007
+   0x10000024 = 0x00000000
+
+### only eight bytes in data
+data[10] >0x10000020,3
+error:  '3' is not a valid count
+data[11] >quit
+
+$ exit
